@@ -1,6 +1,5 @@
 #!/bin/bash
 
-#echo "Ceci est un test">>test.cfg
 #for WORD in `cat test.cfg`
 #do
 #    echo $WORD
@@ -9,6 +8,7 @@
 
 CONFIG_FILE=conf.cfg
 INIT_FILE=init.cfg
+let "TERMINAL_SIZE =`tput cols` - 2"
 
 resetdata()
 {
@@ -53,6 +53,12 @@ getdata()
 	
 }
 
+getnbradio()
+{
+	nb=$(getdata 1 $CONFIG_FILE)
+	echo $nb
+}
+
 getradioname()
 {
 	let "id_radio = 2 * $1"
@@ -88,7 +94,6 @@ addradioat()
 
 radioexists()
 {
-
 	nb_radio=$(getdata 1 $CONFIG_FILE)
 	i=1
 	in=false
@@ -117,9 +122,8 @@ radioexists()
 }
 	
 
-addradio()
+addradioindata()
 {
-
 	#We check if the radio does not already exist
 	exists_name=$(radioexists $1)
 	exists_url=$(radioexists $2)
@@ -129,8 +133,6 @@ addradio()
 		echo "Error... The radio already exists..."
 		exit 1
 	fi
-
-	echo Hey
 
 	# We update the number of radios
 	nb_radio=$(getdata 1 $CONFIG_FILE)
@@ -154,7 +156,7 @@ addradio()
 printradiochoices()
 {
 	nb_radio=$(getdata 1 $CONFIG_FILE)
-	echo -e "List of the Rdios: "
+	echo -e "List of your Rdios: "
 	for (( i=1; i<=$nb_radio; i++ ))
 	do
 		name_radio=$(getradioname $i)
@@ -164,12 +166,82 @@ printradiochoices()
 	
 }
 
+printsettings()
+{
+	echo -e "Settings: "
+	echo -e '\t' "- Type [a]dd to add a new station."
+	echo -e '\t' "- Type [e]dit to edit the data of a station."
+	echo -e '\t' "- Type [r]eset to reset the data."
+	echo -e '\t' "- Type [q]uit to quit.\n"
+	
+}
+
+printchoose()
+{
+	echo -e "Type the number of the station you want in the list, or type [s]ettings."
+}
+
+
+printaddmenu()
+{
+	echo -e "To add a new station, type radio_name radio_url or c to cancel"
+	echo -e "Tip radio url can be found online, for exemple on https://fluxradios.blogspot.fr/" 
+}
+
+
+addradio()
+{
+	printaddmenu
+	read data
+	i=0
+	for info in $data
+	do
+		case $i in
+			"0")
+				name_radio=$info
+				;;
+			"1")
+				url_radio=$info
+				;;
+			*)
+				echo -e "Error with arguments... "
+				addradio 
+				exit 1		
+		esac
+		let i+=1
+	done
+	
+
+	# only name
+	if [ $i -eq 1 ]
+	then
+		if [ "$name_radio" = "c" ]
+		then		
+			echo -e "Canceled."			
+			exit 1
+		else
+			echo -e "Error with arguments... "
+			addradio 
+			exit 1
+		fi
+	fi
+	
+	echo -e "Adding radio " $name_radio " with url " $url_radio " in "$CONFIG_FILE"..."
+	addradioindata $name_radio $url_radio	
+	checkdata
+	echo -e "Radio added !"
+}
+
+
+# Start the streaming of the radio. 
+# Return the PID of mvp
 streamradio()
 {
 	radio_name=$(getradioname $1)
 	radio_url=$(getradiourl $1)
-	echo -e "Streaming "$radio_name"... \n"
-	`mpv $radio_url >/dev/null 2>&1`
+	#`echo -e "Streaming "$radio_name"... \n"`
+	mpv $radio_url  >/dev/null 2>&1 &
+	echo $!
 }
 
 
@@ -178,36 +250,163 @@ editradio()
 	echo TODO
 }
 
-try()
+checkdata()
 {
-
-	for (( i=0; i<=$1; i++ ))
-	do
-	prog=""
-		for (( j=0; j<i; j++ ))
-		do
-			prog=$prog"="
-		done
-		prog=$prog"I"
-		for (( j=i; j<=$1; j++ ))
-		do
-			prog=$prog"="
-		done
-	echo -e "\e[1A\r "$prog
-	sleep 0.2
-	done
-	#echo -e "\n"
-	
-#https://stackoverflow.com/questions/11283625/bash-overwrite-last-terminal-line
+	echo TODO
 }
 
+reset()
+{
+	echo "This operation will reset your data. Continue? (y/n)"
+	ok=true	
+
+	while [ "$ok" = true ]
+	do
+		read choice
+		case $choice in
+				"y" | "Y")
+					echo -e "Fine. Let's clean this mess."
+					resetdata
+					echo -e "Done."
+					ok=false
+					;;
+				"n" | "N")
+					ok=false
+					echo -e "Canceled. Fiouf."
+					;;
+				*)
+					echo -e "Input not valid... Type y if you want to wipe your radios, n otherwise."
+					;;
+		esac
+	done
+}
+
+
+choose()
+{
+	printradiochoices
+	printchoose
+}
+
+movingprogressbar()
+{
+	if [ -t 0 ]; then stty -echo -icanon -icrnl time 0 min 0; fi
+	
+	let "size = $1 + 7"
+	sleep_time=0.03
+	prog=""
+	for (( i=0; i<$1; i++ ))
+	do
+		prog=$prog"="
+	done
+
+	count=8
+	keypress=''
+	while [ "x$keypress" = "x" ]; do
+  		let count+=1
+		if [ $count -gt $size ] 
+		then
+			count=7
+		fi
+		sleep $sleep_time
+		echo -e "\e[1A\r" $prog | sed s/./I/$count
+		keypress="`cat -v`"
+	done
+	
+	if [ -t 0 ]; then stty sane; fi
+	
+	if [ $# -gt 1 ]
+	then
+		kill $2
+	fi
+
+#https://stackoverflow.com/questions/11283625/bash-overwrite-last-terminal-line
+	
+}
+
+welcome()
+{
+
+	clear
+
+	echo -e "Welcome to..."
+	echo -e "\t  __           __               "
+	echo -e "\t | _|  ____   |_ |  ____        "
+	echo -e "\t | |  |  _ \   | | |  _ \  ___  "
+	echo -e "\t | |  | |_) |  | | | | | |/ _ \ "
+	echo -e "\t | |  |  _ <   | | | |_| | (_) |"
+	echo -e "\t | |  |_| \_\  | | |____/ \___/ "
+	echo -e "\t |__|         |__|              \n"
+}
+
+
+bye()
+{
+	echo -e "Thank you for using RdO ! <3"
+	echo -e "See you later !"
+}
+
+
+isnumber()
+{
+	case $1 in
+	    ''|*[!0-9]*) echo false ;;
+	    *) echo true ;;
+	esac
+}
 test_id="FIP"
 test_url="http://direct.fipradio.fr/live/fip-midfi.mp3"
 
-try 20
 #printradiochoices
 #read choice
-#streamradio $choice
+#PID_stream=$(streamradio $choice &)
+
+welcome
+keypress=''
+
+#addradio
+
+while [ "$keypress" != "q" ]; do
+	nb_radio=$(getnbradio)
+	choose
+	read keypress
+
+	if [ $(isnumber $keypress) = true ] && [ "$keypress" -le "$nb_radio" ]
+	then
+		radio_name=$(getradioname $keypress)
+		radio_url=$(getradiourl $keypress)
+		PID_stream=$(streamradio $keypress &)
+	
+		echo -e "Streaming "$radio_name"... "
+		echo -e "Type any key to interrupt, q to quit.\n"
+		movingprogressbar $TERMINAL_SIZE $PID_stream
+	elif [ "$keypress" = "s" ] || [ "$keypress" = "settings" ]
+	then
+		printsettings
+		read keypress
+		
+		case $keypress in
+			"a" | "add")
+				addradio
+				;;
+			"e" | "edit")
+				echo "TODO"
+				;;
+			"r" | "reset")
+				reset
+				;;
+			"q" | "quit")
+				bye
+				exit 1
+				;;	
+			*)
+				keypress=''
+				;;
+		esac
+	fi		
+done
+
+bye
 
 #resetdata
 
