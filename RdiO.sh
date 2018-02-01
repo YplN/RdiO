@@ -1,11 +1,5 @@
 #!/bin/bash
 
-#for WORD in `cat test.cfg`
-#do
-#    echo $WORD
-#done
-
-
 CONFIG_FILE=conf.cfg
 INIT_FILE=init.cfg
 let "TERMINAL_SIZE =`tput cols` - 2"
@@ -41,6 +35,21 @@ replacedata()
 		echo "Error in arguments of setdata"
 	fi	
 }
+
+replaceradio()
+{
+	
+	if [ $# = 3 ]
+	then
+		let "id_radio_name = 2 * $1"
+		let "id_radio_url = 2 * $1 + 1"
+		replacedata $id_radio_name $2 $CONFIG_FILE
+		replacedata $id_radio_url $3 $CONFIG_FILE	
+	else
+		echo "Error in arguments of replacedata"
+	fi
+}
+
 
 getdata()
 {
@@ -120,6 +129,49 @@ radioexists()
 		echo false
 	fi
 }
+
+isvalidradio()
+{
+	nb_radio=$(getnbradio)
+	if [ $(isnumber $1) = true ] && [ "$1" -le "$nb_radio" ] && [ "$1" -ge 1 ]
+	then
+		echo true
+	else
+		echo false
+	fi
+}
+
+
+
+printeditradiochoose()
+{
+	echo -e "To edit a radio, first select which one you want to modify or c to cancel"
+	printradiochoices
+	
+	ok=false
+	
+	while [ $ok = false ]
+	do
+		read choice
+		
+		if [ $(isvalidradio $choice) = true ]
+		then
+			ok=true
+			printeditradio
+			editradio choice
+		else
+			echo -e "Error in passing argument..."
+		fi
+	done	
+	
+}
+
+
+printeditradio()
+{
+	echo -e "To edit a the selected radio, type radio_name radio_url or c to cancel"
+	echo -e "Tip radio url can be found online, for exemple on https://fluxradios.blogspot.fr/" 
+}
 	
 
 addradioindata()
@@ -173,7 +225,6 @@ printsettings()
 	echo -e '\t' "- Type [e]dit to edit the data of a station."
 	echo -e '\t' "- Type [r]eset to reset the data."
 	echo -e '\t' "- Type [q]uit to quit.\n"
-	
 }
 
 printchoose()
@@ -244,10 +295,51 @@ streamradio()
 	echo $!
 }
 
+startedit()
+{
+	printeditradiochoose
+}
 
 editradio()
 {
-	echo TODO
+	read data
+	i=0
+	for info in $data
+	do
+		case $i in
+			"0")
+				name_radio=$info
+				;;
+			"1")
+				url_radio=$info
+				;;
+			*)
+				echo -e "Error with arguments... "
+				addradio 
+				exit 1		
+		esac
+		let i+=1
+	done
+	
+
+	# only name
+	if [ $i -eq 1 ]
+	then
+		if [ "$name_radio" = "c" ]
+		then		
+			echo -e "Canceled."			
+			exit 1
+		else
+			echo -e "Error with arguments... "
+			addradio 
+			exit 1
+		fi
+	fi
+	
+	echo -e "Modifying radio into " $name_radio " with url " $url_radio " in "$CONFIG_FILE"..."
+	replaceradio $1 $name_radio $url_radio	
+	checkdata
+	echo -e "Radio modified !"
 }
 
 checkdata()
@@ -397,27 +489,20 @@ isnumber()
 	    *) echo true ;;
 	esac
 }
+
+
 test_id="FIP"
 test_url="http://direct.fipradio.fr/live/fip-midfi.mp3"
 
-#printradiochoices
-#read choice
-#PID_stream=$(streamradio $choice &)
-
 welcome
 keypress=''
-
-#addradio
-
-#movingprogressbar2 $TERMINAL_SIZE
-
 
 while [ "$keypress" != "q" ]; do
 	nb_radio=$(getnbradio)
 	choose
 	read keypress
 
-	if [ $(isnumber $keypress) = true ] && [ "$keypress" -le "$nb_radio" ]
+	if [ $(isvalidradio $keypress) = true ]
 	then
 		radio_name=$(getradioname $keypress)
 		radio_url=$(getradiourl $keypress)
@@ -430,13 +515,13 @@ while [ "$keypress" != "q" ]; do
 	then
 		printsettings
 		read keypress
-		
+
 		case $keypress in
 			"a" | "add")
 				addradio
 				;;
 			"e" | "edit")
-				echo "TODO"
+				startedit
 				;;
 			"r" | "reset")
 				reset
@@ -454,92 +539,3 @@ done
 
 bye
 
-#resetdata
-
-exit 1
-
-if [ $# -eq 0 ]
-then 
-	echo "Type --franceinter or -in to stream France Inter."
-	echo "Type --franceculture or -fc to stream Franceculture."
-	echo -e "Type --franceinfo or -fi to stream France Info.\n"
-	echo "Type quit or q to quit"
-	
-	read radio
-
-else 
-	case $1 in
-		"--franceinter" | "-in")
-			echo "STREAMING France Inter"
-			mpv http://direct.franceinter.fr/live/franceinter-midfi.mp3 
-			echo "Good bye ;)"
-			exit 1
-			;;
-		"--franceinfo" | "-fi")
-			echo "STREAMING France Info"
-			mpv http://direct.franceinfo.fr/live/franceinfo-midfi.mp3
-			echo "Good bye ;)"
-			exit 1
-			;;
-		"--franceculture" | "-fc")
-			echo "STREAMING France Culture"
-			mpv http://direct.franceculture.fr/live/franceculture-midfi.mp3
-			echo "Good bye ;)"
-			exit 1
-			;;
-		"quit" | "q")
-			echo "Good bye ;)"
-			exit 1
-			;;
-		*)
-			;;
-	esac
-	ok=true
-fi
-
-#echo $radio
-
-ok=false
-
-while [ "$ok" = false ] 
-do
-	#echo $radio
-	if [ "$radio" != "--franceinter" ] && [ "$radio" != "-in" ] && [ "$radio" != "--franceculture" ] && [ "$radio" != "-fc" ] && [ "$radio" != "--franceinfo" ] && [ "$radio" != "-fi" ] && [ "$radio" != "quit" ] && [ "$radio" != "q" ]
-	then
-		echo "Argument not valid..." 
-		echo "Type --franceinter or -in to stream France Inter."
-		echo "Type --franceculture or -fc to stream Franceculture."
-		echo "Type --franceinfo or -fi to stream France Info."
-		echo "Type quit or q to quit"
-		read radio
-	else
-		ok=true
-	fi
-
-	case $radio in
-		"--franceinter" | "-in")
-			echo "STREAMING France Inter"
-			mpv http://direct.franceinter.fr/live/franceinter-midfi.mp3
-			echo "Good bye ;)"
-			exit 1 
-			;;
-		"--franceinfo" | "-fi")
-			echo "STREAMING France Info"
-			mpv http://direct.franceinfo.fr/live/franceinfo-midfi.mp3
-			echo "Good bye ;)"
-			exit 1
-			;;
-		"--franceculture" | "-fc")
-			echo "STREAMING France Culture"
-			mpv http://direct.franceculture.fr/live/franceculture-midfi.mp3
-			echo "Good bye ;)"
-			exit 1
-			;;
-		"quit" | "q")
-			echo "Good bye ;)"
-			exit 1
-			;;
-		*)
-			;;
-	esac
-done
