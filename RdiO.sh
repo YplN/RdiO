@@ -4,6 +4,9 @@ CONFIG_FILE=conf.cfg
 INIT_FILE=init.cfg
 let "TERMINAL_SIZE =`tput cols` - 2"
 
+
+# Reset the CONFIG FILE
+# No input
 resetdata()
 {
 	# Wipe data
@@ -16,6 +19,8 @@ resetdata()
 	done < $INIT_FILE
 }
 
+# Write at a specific line of a file
+# $1:n°line $2:data $3:file
 setdata()
 {
 	if [ $# = 3 ]
@@ -26,6 +31,10 @@ setdata()
 	fi	
 }
 
+
+# Diff avec setdata?
+# Replace data at a specific line of a file
+# $1:n°line $2:data $3:file
 replacedata()
 {
 	if [ $# = 3 ]
@@ -36,6 +45,22 @@ replacedata()
 	fi	
 }
 
+# Echo the data contained in a specific line of a file
+# $1:n°line $2:data $3:file
+getdata()
+{
+	if [ $# = 2 ]
+	then
+		echo `sed -n $1'p' < $2`
+	else
+		echo "Error in arguments of getdata"
+	fi	
+	
+}
+
+
+# Replace a specific radio data into another one
+# $1:n°radio $2:name $3:url
 replaceradio()
 {
 	
@@ -50,24 +75,16 @@ replaceradio()
 	fi
 }
 
-
-getdata()
-{
-	if [ $# = 2 ]
-	then
-		echo `sed -n $1'p' < $2`
-	else
-		echo "Error in arguments of getdata"
-	fi	
-	
-}
-
+# Echo the number of radio in CONFIG FILE
+# No input
 getnbradio()
 {
 	nb=$(getdata 1 $CONFIG_FILE)
 	echo $nb
 }
 
+# Echo the name of a specific radio
+# $1:n°radio
 getradioname()
 {
 	let "id_radio = 2 * $1"
@@ -75,6 +92,8 @@ getradioname()
 	echo $name
 }
 
+# Echo the url of a specific radio
+# $1:n°radio
 getradiourl()
 {
 	let "id_radio = 2 * $1 + 1"
@@ -82,6 +101,9 @@ getradiourl()
 	echo $url
 }
 
+# Seems useless
+# Add a new radio at a specific place
+# $1:position $2: name $3:url
 addradioat()
 {	
 	#We check if the radio does not already exist
@@ -101,6 +123,8 @@ addradioat()
 	setdata $1 $2 $CONFIG_FILE
 }
 
+# Echo true/false if the radio with the same name/url already exists
+# $1: data (name or url)
 radioexists()
 {
 	nb_radio=$(getdata 1 $CONFIG_FILE)
@@ -130,6 +154,9 @@ radioexists()
 	fi
 }
 
+
+#Echo true/false if the input is a number within a good range (1<=n<=#radio)
+#$1:data
 isvalidradio()
 {
 	nb_radio=$(getnbradio)
@@ -142,7 +169,8 @@ isvalidradio()
 }
 
 
-
+#Edit Radio : Choose part
+# No Input
 printeditradiochoose()
 {
 	echo -e "To edit a radio, first select which one you want to modify or c to cancel"
@@ -166,7 +194,8 @@ printeditradiochoose()
 	
 }
 
-
+# Edit Radio: Add the new radio
+# No input
 printeditradio()
 {
 	echo -e "To edit a the selected radio, type radio_name radio_url or c to cancel"
@@ -174,6 +203,8 @@ printeditradio()
 }
 	
 
+# Write in CONFIG FILE the new radio 
+# $1: name $2: url
 addradioindata()
 {
 	#We check if the radio does not already exist
@@ -205,6 +236,8 @@ addradioindata()
 	setdata $line_id $2 $CONFIG_FILE
 }
 
+# Echo the list of the saved radios
+# No input
 printradiochoices()
 {
 	nb_radio=$(getdata 1 $CONFIG_FILE)
@@ -213,11 +246,12 @@ printradiochoices()
 	do
 		name_radio=$(getradioname $i)
 		echo -e '\t' $i ". " $name_radio 
-#$url_radio 
 	done
 	
 }
 
+# Print the list of the settings
+# No input
 printsettings()
 {
 	echo -e "Settings: "
@@ -227,12 +261,15 @@ printsettings()
 	echo -e '\t' "- Type [q]uit to quit.\n"
 }
 
+#Print the message asking to chose the station
+# No input
 printchoose()
 {
 	echo -e "Type the number of the station you want in the list, or type [s]ettings."
 }
 
-
+#Print Tip to add new radio
+# No input
 printaddmenu()
 {
 	echo -e "To add a new station, type radio_name radio_url or c to cancel"
@@ -240,6 +277,8 @@ printaddmenu()
 }
 
 
+#Function to add a radio
+# No input
 addradio()
 {
 	printaddmenu
@@ -285,21 +324,29 @@ addradio()
 
 
 # Start the streaming of the radio. 
-# Return the PID of mvp
+# $1: N° radio
+# IMPORTANT : Return the PID of mvp
 streamradio()
 {
 	radio_name=$(getradioname $1)
 	radio_url=$(getradiourl $1)
-	#`echo -e "Streaming "$radio_name"... \n"`
+
 	mpv $radio_url  >/dev/null 2>&1 &
+	#echo the PID that we have to kill to stop the radio
 	echo $!
 }
 
+#A bit useless
+#Function to edit the radio
+# No input
 startedit()
 {
 	printeditradiochoose
 }
 
+
+# Edit the radio in the CONFIG FILE
+# No input
 editradio()
 {
 	read data
@@ -342,11 +389,16 @@ editradio()
 	echo -e "Radio modified !"
 }
 
+# Check that CONFIG FILE is ok
+# No input
 checkdata()
 {
 	echo TODO
 }
 
+
+# Function to reset data
+# No input
 reset()
 {
 	echo "This operation will reset your data. Continue? (y/n)"
@@ -374,12 +426,16 @@ reset()
 }
 
 
+#Print choose
+# No input
 choose()
 {
 	printradiochoices
 	printchoose
 }
 
+# Kikoo progressbar and eventualy kill the process of mpv
+# $1: size of the bar [$2: PID of the process]
 movingprogressbar()
 {
 	if [ -t 0 ]; then stty -echo -icanon -icrnl time 0 min 0; fi
@@ -417,7 +473,8 @@ movingprogressbar()
 }
 
 
-
+# Kikoo progressbar and eventualy kill the process of mpv
+# $1: size of the bar [$2: PID of the process]
 movingprogressbar2()
 {
 	if [ -t 0 ]; then stty -echo -icanon -icrnl time 0 min 0; fi
@@ -459,6 +516,9 @@ movingprogressbar2()
 	
 }
 
+
+#Because we're not sauvages
+# No input
 welcome()
 {
 
@@ -474,14 +534,16 @@ welcome()
 	echo -e "\t |__|         |__|              \n"
 }
 
-
+# No, we're not.
+# No input
 bye()
 {
 	echo -e "Thank you for using RdO ! <3"
 	echo -e "See you later !"
 }
 
-
+#Check if the data is a number
+#$1:data
 isnumber()
 {
 	case $1 in
@@ -491,8 +553,20 @@ isnumber()
 }
 
 
+## tests stuff #######
 test_id="FIP"
 test_url="http://direct.fipradio.fr/live/fip-midfi.mp3"
+######################
+
+
+
+
+
+######################
+###       RDo      ###
+######################
+
+
 
 welcome
 keypress=''
