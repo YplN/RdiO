@@ -324,6 +324,49 @@ movingprogressbar()
 	
 }
 
+
+
+movingprogressbar2()
+{
+	if [ -t 0 ]; then stty -echo -icanon -icrnl time 0 min 0; fi
+	
+	let "size = $1 + 7"
+	sleep_time=0.045
+	pattern="¸,ø¤º°º¤ø,¸"
+	pattern_size=11
+	
+	for (( i=0; i<$1; i++ ))
+	do
+		let "p = i % pattern_size"
+		line=$line${pattern:p:1}
+	done
+
+	fullline=$line
+	
+	let "t1 = $1 - 1"
+	
+	keypress=''
+	while [ "x$keypress" = "x" ]; do
+  		sleep $sleep_time 
+
+		fullline=${fullline:1:$t1}${fullline:0:1}
+
+		echo -e "\e[1A\r" $fullline
+		keypress="`cat -v`"
+	done
+	
+	if [ -t 0 ]; then stty sane; fi
+	
+	if [ $# -gt 1 ]
+	then
+		kill $2
+	fi
+
+
+#https://stackoverflow.com/questions/11283625/bash-overwrite-last-terminal-line
+	
+}
+
 welcome()
 {
 
@@ -366,6 +409,9 @@ keypress=''
 
 #addradio
 
+#movingprogressbar2 $TERMINAL_SIZE
+
+
 while [ "$keypress" != "q" ]; do
 	nb_radio=$(getnbradio)
 	choose
@@ -379,7 +425,7 @@ while [ "$keypress" != "q" ]; do
 	
 		echo -e "Streaming "$radio_name"... "
 		echo -e "Type any key to interrupt, q to quit.\n"
-		movingprogressbar $TERMINAL_SIZE $PID_stream
+		movingprogressbar2 $TERMINAL_SIZE $PID_stream
 	elif [ "$keypress" = "s" ] || [ "$keypress" = "settings" ]
 	then
 		printsettings
