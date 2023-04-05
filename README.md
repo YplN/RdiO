@@ -1,4 +1,4 @@
-# RdO
+# RdiO
 Simple Radio for your terminal
 
 ## How to
