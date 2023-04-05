@@ -3,6 +3,49 @@
 CONFIG_FILE=conf.cfg
 INIT_FILE=init.cfg
 let "TERMINAL_SIZE =`tput cols` - 2"
+REQUIRED_PKG="mpv"
+
+
+checkrequirements()
+{
+	PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+	echo Checking for $REQUIRED_PKG: $PKG_OK
+	if [ "" = "$PKG_OK" ]; then
+  		echo "No $REQUIRED_PKG. Setting up $REQUIRED_PKG."
+		echo "Do you want to install it? (y/n)"
+		ok=true	
+
+		while [ "$ok" = true ]
+		do
+			read choice
+			case $choice in
+					"y" | "Y")
+						echo -e "Fine. Let's try to install it."  		
+						sudo apt-get --yes install $REQUIRED_PKG
+						PKG_OK=$(dpkg-query -W --showformat='${Status}\n' $REQUIRED_PKG|grep "install ok installed")
+						if [ "" = "$PKG_OK" ]; then						
+							echo "Error while trying to install $REQUIRED_PKG. Try to install it manually"
+							exit 1
+						else
+							echo "Done."
+
+						fi
+						ok=false
+						;;
+					"n" | "N")
+						ok=false
+						echo "Canceled. See you next time !"
+						exit 1
+						;;
+					*)
+						echo -e "Input not valid... Type y if you want to install the package, n otherwise."
+						;;
+			esac
+		done
+
+	fi
+}
+
 
 
 # Reset the CONFIG FILE
@@ -199,7 +242,7 @@ printeditradiochoose()
 printeditradio()
 {
 	echo -e "To edit a the selected radio, type radio_name radio_url or c to cancel"
-	echo -e "Tip radio url can be found online, for exemple on https://fluxradios.blogspot.fr/" 
+	echo -e "Tip radio url can be found online, for exemple on https://streamurl.link/" 
 }
 	
 
@@ -273,7 +316,7 @@ printchoose()
 printaddmenu()
 {
 	echo -e "To add a new station, type radio_name radio_url or c to cancel"
-	echo -e "Tip radio url can be found online, for exemple on https://fluxradios.blogspot.fr/" 
+	echo -e "Tip radio url can be found online, for exemple on https://streamurl.link/" 
 }
 
 
@@ -517,22 +560,28 @@ movingprogressbar2()
 }
 
 
-#Because we're not sauvages
+#Because we're not savages
 # No input
 welcome()
 {
 
 	clear
-
-	echo -e "Welcome to..."
-	echo -e "\t  __           __               "
-	echo -e "\t | _|  ____   |_ |  ____        "
-	echo -e "\t | |  |  _ \   | | |  _ \  ___  "
-	echo -e "\t | |  | |_) |  | | | | | |/ _ \ "
-	echo -e "\t | |  |  _ <   | | | |_| | (_) |"
-	echo -e "\t | |  |_| \_\  | | |____/ \___/ "
-	echo -e "\t |__|         |__|              \n"
+	echo -e "\t  ___ _____ ___     _ _       "
+	echo -e "\t |  _|  __ \_  |   | (_)      "
+	echo -e "\t | | | |__) || | __| |_  ___  "
+	echo -e "\t | | |  _  / | |/ _  | |/ _ \ "
+	echo -e "\t | | | | \ \ | | (_| | | (_) |"
+	echo -e "\t | |_|_|  \_\| |\__,_|_|\___/ "
+	echo -e "\t |___|     |___|            \n"
 }
+
+
+
+
+
+
+
+   
 
 # No, we're not.
 # No input
@@ -567,11 +616,11 @@ test_url="http://direct.fipradio.fr/live/fip-midfi.mp3"
 ######################
 
 
-
-welcome
+checkrequirements
 keypress=''
 
 while [ "$keypress" != "q" ]; do
+	welcome
 	nb_radio=$(getnbradio)
 	choose
 	read keypress
@@ -581,23 +630,28 @@ while [ "$keypress" != "q" ]; do
 		radio_name=$(getradioname $keypress)
 		radio_url=$(getradiourl $keypress)
 		PID_stream=$(streamradio $keypress &)
-	
+		
+		welcome
 		echo -e "Streaming "$radio_name"... "
 		echo -e "Type any key to interrupt, q to quit.\n"
 		movingprogressbar2 $TERMINAL_SIZE $PID_stream
 	elif [ "$keypress" = "s" ] || [ "$keypress" = "settings" ]
-	then
+	then		
+		welcome
 		printsettings
 		read keypress
 
 		case $keypress in
 			"a" | "add")
+				welcome
 				addradio
 				;;
 			"e" | "edit")
+				welcome
 				startedit
 				;;
 			"r" | "reset")
+				welcome
 				reset
 				;;
 			"q" | "quit")
@@ -612,4 +666,4 @@ while [ "$keypress" != "q" ]; do
 done
 
 bye
-
+exit 0
